@@ -128,3 +128,7 @@ Développé comme une première version fonctionnelle à valider sur votre appar
 Fermer toutes les fenêtres et l’application Photos PE, puis rouvrir avec Internet. Si v1.0 apparaît encore en bas, fermer et rouvrir une seconde fois : le nouveau service worker attend que les anciennes fenêtres soient fermées. Vérifier **v1.1** en bas avant de tester les nouveaux boutons. Ne pas désinstaller et ne pas effacer les données Safari pour mettre à jour.
 
 Tests supplémentaires IndexedDB : lancer le serveur local, puis ouvrir `http://localhost:8080/tests/db-browser.html` et cliquer **Vérifier les suppressions**. Les tests emploient une base isolée temporaire, distincte des données terrain.
+
+## Correctif 1.1.1 — mises à jour
+
+Le cache des ressources est rempli en contournant aussi le cache HTTP. Le nouveau service worker peut prendre la relève sans attendre la fermeture de toutes les fenêtres. Il ne force pas le rechargement pendant une prise de vue. Le bouton « Vérifier les mises à jour » permet ensuite de télécharger une nouvelle version puis de choisir quand la recharger. Les mises à jour ne modifient pas IndexedDB.

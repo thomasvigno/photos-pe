@@ -63,5 +63,32 @@ action('persist',async()=>{if(navigator.storage?.persist){const ok=await navigat
 $('preview-close').onclick=()=>$('preview').close();$('preview').onclose=()=>{if(previewURL)URL.revokeObjectURL(previewURL);previewURL=null;$('preview-image').removeAttribute('src');};
 function network(){$('network').textContent=navigator.onLine?'Sur cet appareil':'Hors connexion';}addEventListener('online',network);addEventListener('offline',network);network();
 // Keep prepared ZIP URL valid when Safari returns from the native share sheet.
-async function offline(){try{if(!('serviceWorker'in navigator)||!isSecureContext)throw Error('HTTPS (ou localhost sur Windows) requis pour le mode hors ligne.');await navigator.serviceWorker.register('./sw.js');await navigator.serviceWorker.ready;$('offline').textContent='✓ Ressources hors ligne prêtes · testez en mode avion avant le terrain.';}catch(e){$('offline').textContent=`Hors ligne non prêt : ${e.message}`;}}
+let registration;
+let reloadRequested=false;
+let updateAvailable=false;
+navigator.serviceWorker?.addEventListener('controllerchange',()=>{
+ if(reloadRequested){location.reload();return;}
+ updateAvailable=true;
+ $('check-update').textContent='Appliquer la mise à jour';
+ status('Mise à jour prête. Terminez vos photos et enregistrez tout ZIP préparé, puis appuyez sur Appliquer la mise à jour.');
+});
+action('check-update',async()=>{
+ if(!navigator.onLine&&!updateAvailable)throw Error('Connectez-vous à Internet pour rechercher une mise à jour.');
+ if(!registration)throw Error('Mode hors ligne non initialisé. Ouvrez l’application en HTTPS.');
+ if(updateAvailable||registration.waiting){
+  if(!confirm('Recharger Photos PE ? Terminez toute prise de vue et enregistrez les ZIP préparés avant de continuer. Les photos déjà enregistrées sont conservées.'))return;
+  if(registration.waiting){reloadRequested=true;registration.waiting.postMessage({type:'ACTIVATE_UPDATE'});}else location.reload();
+  return;
+ }
+ await registration.update();
+ if(registration.installing){status('Téléchargement de la mise à jour… Attendez le bouton Appliquer la mise à jour.');}
+ else if(!updateAvailable&&!registration.waiting)status('Recherche terminée. Si une mise à jour est téléchargée, le bouton Appliquer apparaîtra.');
+});
+async function offline(){try{
+ if(!('serviceWorker'in navigator)||!isSecureContext)throw Error('HTTPS (ou localhost sur Windows) requis pour le mode hors ligne.');
+ registration=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});
+ await navigator.serviceWorker.ready;
+ $('offline').textContent='✓ Ressources hors ligne prêtes · testez en mode avion avant le terrain.';
+ if(navigator.onLine)registration.update().catch(()=>{});
+}catch(e){$('offline').textContent=`Hors ligne non prêt : ${e.message}`;}}
 await run(async()=>{await openDB();await refresh();});offline();
