@@ -1,4 +1,4 @@
-# Photos PE — version 1.0
+# Photos PE — version 1.1
 
 Application Web progressive en français, sans compte, sans serveur de données et sans dépendance JavaScript externe. Développement et publication possibles entièrement depuis Windows. Cible : **Safari sur iPhone avec iOS 17 ou ultérieur**, en HTTPS et installé sur l’écran d’accueil.
 
@@ -35,7 +35,11 @@ Alternative sans GitHub Desktop : créer le dépôt dans GitHub, téléverser le
 - **Voir** permet de contrôler une photo. **Reprendre** demande confirmation ; l’ancienne photo reste présente jusqu’à l’enregistrement réussi de sa remplaçante. Annuler la caméra n’efface rien.
 - Chaque PE propose exactement 10 emplacements. La progression globale affiche les photos présentes sur le nombre attendu. Le filtre **Incomplètes** et le tableau permettent de reprendre une PE.
 - **Renommer** conserve les photos via un identifiant interne stable. Le nouveau nom sera utilisé dans les prochains ZIP et CSV ; un ZIP déjà enregistré ne change pas.
-- Un projet par installation ; pas de suppression de parcelles ou de photos proposée dans cette version.
+- **Supprimer** sous une photo : confirmation, effacement de cette seule photo, emplacement disponible à nouveau ; les autres photos et la PE sont conservées.
+- **Supprimer cette PE** dans une parcelle ouverte : confirmation, puis suppression de la PE et de toutes ses photos.
+- **Supprimer le projet** sous le nom du projet : saisir exactement `SUPPRIMER` pour effacer le projet courant, ses PE, ses photos et les marqueurs de restauration. Un nouveau projet vide peut ensuite être créé.
+- Ces suppressions sont définitives dans l’application. Seule une sauvegarde externe préalablement enregistrée peut permettre de récupérer les données. Les ZIP déjà enregistrés dans Fichiers ne sont pas supprimés. L’export préparé en mémoire est abandonné après une suppression.
+- Un seul projet actif par installation.
 
 ## Exports et sauvegardes
 
@@ -118,3 +122,9 @@ L’app est conçue pour une seule fenêtre d’utilisation. L’index unique pr
 - GitHub, configuration Pages : https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site
 
 Développé comme une première version fonctionnelle à valider sur votre appareil avant un usage terrain essentiel.
+
+## Mise à jour 1.1 d’une installation existante
+
+Fermer toutes les fenêtres et l’application Photos PE, puis rouvrir avec Internet. Si v1.0 apparaît encore en bas, fermer et rouvrir une seconde fois : le nouveau service worker attend que les anciennes fenêtres soient fermées. Vérifier **v1.1** en bas avant de tester les nouveaux boutons. Ne pas désinstaller et ne pas effacer les données Safari pour mettre à jour.
+
+Tests supplémentaires IndexedDB : lancer le serveur local, puis ouvrir `http://localhost:8080/tests/db-browser.html` et cliquer **Vérifier les suppressions**. Les tests emploient une base isolée temporaire, distincte des données terrain.

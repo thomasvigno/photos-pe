@@ -1,4 +1,4 @@
-const CACHE='photos-pe-v1.0.0';
+const CACHE='photos-pe-v1.1.0';
 const ASSETS=['./','./index.html','./style.css','./app.js','./core.js','./db.js','./zip.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS))));
 // A new version waits until all older windows close; no forced reload during capture.

@@ -1,5 +1,5 @@
 import {validId,filename,safeName,csv,parts,uuid} from './core.js';
-import {openDB,get,all,photoMeta,put,savePhoto,digest,transact} from './db.js';
+import {openDB,get,all,photoMeta,put,savePhoto,digest,transact,deletePhoto,deletePlot,deleteProject} from './db.js';
 import {ZipWriter,readZip,checkedEntry} from './zip.js';
 const $=id=>document.getElementById(id),selected=new Set();
 let plots=[],photos=[],project={id:uuid(),name:''},active=null,busy=false,target=null,exportJob=null,deliveryFile=null,deliveryURL=null,previewURL=null;
@@ -12,7 +12,7 @@ function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefine
 function button(text,fn,cls='secondary'){const b=el('button',text,cls);b.type='button';b.onclick=()=>run(fn);return b;}
 async function refresh(){plots=(await all('plots')).sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true}));photos=await photoMeta();const saved=await get('meta','project');if(saved)project=saved;$('project').value=project.name;render();await storage();}
 function render(){const total=plots.length*10;$('total').textContent=`${photos.length} / ${total} photos · ${plots.filter(p=>count(p)<10).length} PE incomplètes`;$('global').max=total||1;$('global').value=photos.length;$('plots').replaceChildren();const visible=plots.filter(p=>!$('incomplete').checked||count(p)<10);if(!visible.length)$('plots').append(el('p',plots.length?'Aucune parcelle incomplète.':'Créez votre première parcelle.','small'));for(const p of visible){const row=el('div',undefined,'plot'),check=el('input');check.type='checkbox';check.checked=selected.has(p.key);check.setAttribute('aria-label',`Sélectionner ${p.id}`);check.onchange=()=>check.checked?selected.add(p.key):selected.delete(p.key);const text=el('div');text.append(el('strong',p.id),el('p',`${count(p)} / 10 · ${count(p)===10?'Complète':'À compléter'}`));row.append(check,text,button('Ouvrir',()=>{active=p.key;renderDetail();$('detail').scrollIntoView({behavior:'smooth',block:'start'});}));$('plots').append(row);}renderDetail();}
-function renderDetail(){const p=plots.find(p=>p.key===active);$('detail').hidden=!p;if(!p)return;$('plot-title').textContent=p.id;const next=Array.from({length:10},(_,i)=>i+1).find(i=>!photos.some(r=>r.plot===p.key&&r.slot===i));$('next').textContent=next?`Prochaine : ${filename(p.id,next)}`:'10 / 10 — Parcelle complète';$('capture').disabled=!next||busy;$('slots').replaceChildren();for(let slot=1;slot<=10;slot++){const saved=photos.find(r=>r.plot===p.key&&r.slot===slot),tile=el('div',undefined,'slot');tile.append(el('strong',filename(p.id,slot)),el('p',saved?'✓ Enregistrée':'À prendre','small'));if(saved)tile.append(button('Voir',()=>showPhoto(p,slot)));tile.append(button(saved?'Reprendre':'Photographier',()=>startCapture(p,slot,!!saved)));$('slots').append(tile);}}
+function renderDetail(){const p=plots.find(p=>p.key===active);$('detail').hidden=!p;if(!p)return;$('plot-title').textContent=p.id;const next=Array.from({length:10},(_,i)=>i+1).find(i=>!photos.some(r=>r.plot===p.key&&r.slot===i));$('next').textContent=next?`Prochaine : ${filename(p.id,next)}`:'10 / 10 — Parcelle complète';$('capture').disabled=!next||busy;$('slots').replaceChildren();for(let slot=1;slot<=10;slot++){const saved=photos.find(r=>r.plot===p.key&&r.slot===slot),tile=el('div',undefined,'slot');tile.append(el('strong',filename(p.id,slot)),el('p',saved?'✓ Enregistrée':'À prendre','small'));if(saved)tile.append(button('Voir',()=>showPhoto(p,slot)),button('Supprimer',()=>removePhoto(p,slot),'danger'));tile.append(button(saved?'Reprendre':'Photographier',()=>startCapture(p,slot,!!saved)));$('slots').append(tile);}}
 function startCapture(p,slot,replace){if(replace&&!confirm(`Remplacer ${filename(p.id,slot)} ? La photo actuelle restera enregistrée tant que la nouvelle n’est pas sauvegardée.`))return;const old=photos.find(r=>r.plot===p.key&&r.slot===slot);target={plot:p.key,slot,oldHash:old?.hash};$('camera').value='';$('camera').click();}
 async function jpeg(file){if(!file||file.size>50*1024*1024)throw Error('Image absente ou supérieure à 50 Mio.');const url=URL.createObjectURL(file),img=new Image();try{await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error('Image non décodable. Choisissez une photo JPEG/HEIF prise par cet iPhone.'));img.src=url;});if(!img.naturalWidth||!img.naturalHeight)throw Error('Dimensions invalides.');const scale=Math.min(1,3200/Math.max(img.naturalWidth,img.naturalHeight)),c=document.createElement('canvas');c.width=Math.round(img.naturalWidth*scale);c.height=Math.round(img.naturalHeight*scale);const ctx=c.getContext('2d');if(!ctx)throw Error('Mémoire insuffisante pour convertir la photo.');ctx.drawImage(img,0,0,c.width,c.height);const blob=await new Promise(resolve=>c.toBlob(resolve,'image/jpeg',.92));c.width=c.height=1;if(!blob||blob.size===0||blob.type!=='image/jpeg')throw Error('Conversion JPEG impossible.');return blob;}finally{URL.revokeObjectURL(url);img.src='';}}
 async function capture(){if(!crypto.subtle)throw Error('HTTPS requis pour enregistrer les photos. Utilisez GitHub Pages ou localhost.');const t=target,file=$('camera').files?.[0];target=null;if(!t||!file)return;status('Conversion et enregistrement… Gardez l’application ouverte.');const blob=await jpeg(file),hash=await digest(blob),existing=await get('photos',[t.plot,t.slot]);if(existing?.hash!==t.oldHash)throw Error('Cet emplacement a été modifié dans une autre fenêtre. Réessayez.');await savePhoto({plot:t.plot,slot:t.slot,blob,size:blob.size,hash,date:new Date().toISOString()},t.oldHash);await refresh();status(`${filename(plots.find(p=>p.key===t.plot).id,t.slot)} enregistrée et vérifiée.`);$('camera').value='';}
@@ -31,6 +31,27 @@ action('close',()=>{active=null;renderDetail();});
 action('capture',()=>{const p=plots.find(p=>p.key===active),slot=Array.from({length:10},(_,i)=>i+1).find(i=>!photos.some(r=>r.plot===active&&r.slot===i));if(p&&slot)startCapture(p,slot,false);});
 $('camera').onchange=()=>run(capture);
 action('rename',async()=>{const p=plots.find(p=>p.key===active),answer=prompt('Nouvel identifiant de parcelle',p.id);if(answer===null)return;const id=answer.trim(),canonical=validId(id);await refresh();if(plots.some(x=>x.key!==p.key&&validId(x.id)===canonical))throw Error('Cet identifiant existe déjà.');await put('plots',{...p,id,canonical});await refresh();status('Parcelle renommée. Les prochains exports utiliseront les nouveaux noms.');});
+
+function discardPending(){target=null;exportJob=null;clearDelivery();$('camera').value='';if($('preview').open)$('preview').close();}
+async function removePhoto(p,slot){
+ if(!confirm(`Supprimer définitivement ${filename(p.id,slot)} de cet appareil ? Cet emplacement pourra être photographié à nouveau. Sans sauvegarde externe, la photo sera perdue.`))return;
+ await deletePhoto(p.key,slot);
+ discardPending();await refresh();status(`${filename(p.id,slot)} supprimée. Emplacement disponible.`);
+}
+action('delete-plot',async()=>{
+ const p=plots.find(p=>p.key===active);if(!p)return;
+ if(!confirm(`Supprimer définitivement la PE « ${p.id} » et toutes ses photos de cet appareil ? Sans sauvegarde externe, ces données seront perdues.`))return;
+ await deletePlot(p.key);
+ selected.delete(p.key);active=null;discardPending();await refresh();status(`PE ${p.id} et ses photos supprimées.`);
+});
+action('delete-project',async()=>{
+ const name=project.name||'Sans nom';
+ const answer=prompt(`Supprimer définitivement le projet « ${name} », toutes ses PE et toutes ses photos de cet appareil ? Sans sauvegarde externe, ces données seront perdues. Saisissez SUPPRIMER pour confirmer.`);
+ if(answer!=='SUPPRIMER'){status('Suppression du projet annulée.');return;}
+ await deleteProject();
+ project={id:uuid(),name:''};active=null;selected.clear();discardPending();$('new-id').value='';await refresh();status('Projet supprimé. Vous pouvez créer un nouveau projet.');
+});
+
 $('incomplete').onchange=render;
 action('select-all',()=>{for(const p of plots.filter(p=>!$('incomplete').checked||count(p)<10))selected.add(p.key);render();});
 action('export-one',()=>beginExport([active]));action('export-selected',()=>beginExport([...selected]));action('backup',()=>beginExport(plots.map(p=>p.key),true));

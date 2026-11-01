@@ -1,4 +1,4 @@
-# Vérification — Photos PE 1.0
+# Vérification — Photos PE 1.1
 
 ## Exécuté dans l’environnement de développement
 
@@ -42,3 +42,9 @@ Installer la version HTTPS depuis Safari, idéalement iOS 17+.
 | Nouvelle version du cache | Mise à jour après fermeture/réouverture connectée, photos conservées |
 
 Pour vérifier une restauration, comparer aussi visuellement plusieurs photos et leurs noms dans Fichiers. Conserver les ZIP à l’extérieur du navigateur pendant l’essai. Ne pas tester une suppression de données avec des photos terrain uniques.
+
+## Ajouts vérifiés pour la version 1.1
+
+Les dix tests Node passent toujours. Sept vérifications supplémentaires ont été exécutées dans le navigateur Chrome avec **IndexedDB réel**, dans une base isolée : suppression ciblée d’une photo, réutilisation de son emplacement, suppression en cascade de la PE avec conservation des autres PE, refus d’une capture sur une PE supprimée, effacement complet du projet et des marqueurs de restauration, persistance après fermeture/réouverture de la base, création avec un ancien identifiant.
+
+Essais complémentaires sur iPhone : annuler chaque confirmation et vérifier l’absence de changement ; supprimer une photo et vérifier la baisse du compteur puis la reprise de l’emplacement ; supprimer une PE et contrôler les autres ; exporter une sauvegarde puis supprimer le projet avec le mot SUPPRIMER et vérifier que le ZIP externe existe toujours. La validation de ces gestes sur Safari/iPhone reste à effectuer.
